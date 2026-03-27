@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./solo-leveling.db"
+}
+
+model Player {
+  id        String   @id @default(uuid())
+  name      String   @default("Hunter")
+  title     String   @default("The Ordinary Human")
+  level      Int      @default(1)
+  xp         Int      @default(0)
+  skipPasses Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks        Task[]
+  dayLogs      DayLog[]
+  quests       Quest[]
+  activeQuests ActiveQuest[]
+}
+
+model DayLog {
+  id       String @id @default(uuid())
+  date     String @unique // YYYY-MM-DD
+  level    Int
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id])
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @default("")
+  category    String   @default("growth") // growth, hobby, self_care
+  status      String   @default("active") // active, completed, failed
+  xpGain      Int      @default(0)        // XP gained on completion (locked at creation)
+  xpLoss      Int      @default(0)        // XP lost on failure (locked at creation)
+
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id])
+
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+}
+
+// Quest pool — user-added quests waiting to be randomly selected
+model Quest {
+  id        String   @id @default(uuid())
+  title     String
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// Today's active quest — one per day, rolled with 10% probability
+model ActiveQuest {
+  id       String @id @default(uuid())
+  date     String @unique // YYYY-MM-DD — one roll per day
+  questId  String?        // null = rolled but no quest today
+  title    String?        // snapshot of quest title (so it persists after quest deletion)
+  status   String @default("active") // active, completed, failed
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id])
+}
