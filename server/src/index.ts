@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import { playerRouter } from './routes/player.js';
@@ -28,3 +28,10 @@ app.use('/api/quests', questRouter);
 app.listen(PORT, () => {
   console.log(`⚔️  Solo Leveling server running on http://localhost:${PORT}`);
 });
+
+// Global error handler — must be last, after all routes
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[server error]', err);
+  res.status(500).json({ success: false, error: 'Internal server error' });
+});
+
