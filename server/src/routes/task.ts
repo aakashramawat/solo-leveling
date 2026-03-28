@@ -85,7 +85,7 @@ taskRouter.post('/', async (req: Request, res: Response, next: NextFunction) => 
 // Complete task → gain XP
 taskRouter.put('/:id/complete', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const task = await prisma.task.findUnique({ where: { id: req.params.id } });
+    const task = await prisma.task.findUnique({ where: { id: req.params.id as string } });
 
     if (!task) {
       res.status(404).json({ success: false, error: 'Task not found' });
@@ -119,7 +119,7 @@ taskRouter.put('/:id/complete', async (req: Request, res: Response, next: NextFu
 // Fail task → lose XP
 taskRouter.put('/:id/fail', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const task = await prisma.task.findUnique({ where: { id: req.params.id } });
+    const task = await prisma.task.findUnique({ where: { id: req.params.id as string } });
 
     if (!task) {
       res.status(404).json({ success: false, error: 'Task not found' });

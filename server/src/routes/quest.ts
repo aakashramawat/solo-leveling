@@ -133,7 +133,7 @@ questRouter.post('/', async (req: Request, res: Response, next: NextFunction) =>
 // POST /api/quests/:id/complete — complete today's active quest
 questRouter.post('/:id/complete', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const activeQuest = await prisma.activeQuest.findUnique({ where: { id } });
     if (!activeQuest || activeQuest.status !== 'active') {
@@ -173,7 +173,7 @@ questRouter.post('/:id/complete', async (req: Request, res: Response, next: Next
 // POST /api/quests/:id/fail — give up on today's active quest
 questRouter.post('/:id/fail', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const activeQuest = await prisma.activeQuest.findUnique({ where: { id } });
     if (!activeQuest || activeQuest.status !== 'active') {
