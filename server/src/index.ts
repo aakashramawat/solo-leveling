@@ -1,13 +1,18 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
 import { playerRouter } from './routes/player.js';
 import { taskRouter } from './routes/task.js';
 import { dailyRouter } from './routes/daily.js';
 import { questRouter } from './routes/quest.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
-const PORT = 3001;
+const PORT = parseInt(process.env.PORT ?? '3001', 10);
 
 export const prisma = new PrismaClient();
 
@@ -25,9 +30,12 @@ app.use('/api/tasks', taskRouter);
 app.use('/api/daily', dailyRouter);
 app.use('/api/quests', questRouter);
 
-app.listen(PORT, () => {
-  console.log(`⚔️  Solo Leveling server running on http://localhost:${PORT}`);
-});
+// In production, serve the built React app and handle client-side routing
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.resolve(__dirname, '../../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+}
 
 // Global error handler — must be last, after all routes
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
@@ -35,3 +43,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ success: false, error: 'Internal server error' });
 });
 
+app.listen(PORT, () => {
+  console.log(`⚔️  Solo Leveling server running on http://localhost:${PORT}`);
+});
