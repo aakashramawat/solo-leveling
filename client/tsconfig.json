@@ -4,9 +4,6 @@
     "jsx": "react-jsx",
     "outDir": "./dist",
     "rootDir": "./src",
-    "paths": {
-      "@solo-leveling/shared": ["../shared/src"]
-    }
   },
   "include": ["src"]
 }
