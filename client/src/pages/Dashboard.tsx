@@ -94,7 +94,7 @@ export default function Dashboard() {
       />
 
       {/* Today's XP Summary */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Card>
           <div className="text-[10px] font-mono text-gray-500 uppercase tracking-wider mb-1">
             Challenges Today
@@ -215,7 +215,7 @@ export default function Dashboard() {
                         placeholder={`${info.label} Task ${marked + i + 1} — add subtitle...`}
                         className="w-full bg-transparent text-sm font-mono text-gray-300 placeholder-gray-600 focus:outline-none"
                       />
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           variant="success"
                           size="sm"

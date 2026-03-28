@@ -108,7 +108,7 @@ export default function Quests() {
               -{questData.penaltyXp.toLocaleString()} XP if failed
             </span>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button
               variant="primary"
               size="md"
@@ -144,7 +144,7 @@ export default function Quests() {
         Add Quest to Pool
       </h4>
       <Card>
-        <form onSubmit={handleAdd} className="flex gap-3">
+        <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={newTitle}
