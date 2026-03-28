@@ -36,10 +36,72 @@ async function getOrCreatePlayer() {
   return player;
 }
 
+// Apply XP penalties for past days where required tasks weren't completed.
+// Creates auto-failed task records so penalties are never applied twice.
+async function applyMissedPenalties(player: Awaited<ReturnType<typeof getOrCreatePlayer>>) {
+  const today = getTodayDate();
+
+  const pastLogs = await prisma.dayLog.findMany({
+    where: { playerId: player.id, date: { lt: today } },
+    orderBy: { date: 'asc' },
+  });
+
+  const categories: TaskCategory[] = ['growth', 'hobby', 'self_care'];
+  let xpDeduction = 0;
+  const missedTasks: {
+    title: string; category: string; status: string;
+    xpGain: number; xpLoss: number; playerId: string; createdAt: Date;
+  }[] = [];
+
+  for (const log of pastLogs) {
+    const required = getDailyRequirements(log.level);
+    const [y, m, d] = log.date.split('-').map(Number);
+    const dayStart = new Date(y, m - 1, d, 0, 0, 0, 0);
+    const dayEnd   = new Date(y, m - 1, d, 23, 59, 59, 999);
+    const createdAt = new Date(y, m - 1, d, 12, 0, 0, 0); // noon — within the day's range
+
+    const dayTasks = await prisma.task.findMany({
+      where: { playerId: player.id, createdAt: { gte: dayStart, lte: dayEnd } },
+    });
+
+    for (const category of categories) {
+      const slots = required[category];
+      const filled = dayTasks.filter((t) => t.category === category).length; // completed + failed
+      const missing = Math.max(0, slots - filled);
+
+      if (missing > 0) {
+        const xpLoss = calculateTaskXpLoss(log.level, category);
+        for (let i = 0; i < missing; i++) {
+          missedTasks.push({
+            title: `${category} task (missed)`,
+            category,
+            status: 'failed',
+            xpGain: 0,
+            xpLoss,
+            playerId: player.id,
+            createdAt,
+          });
+          xpDeduction += xpLoss;
+        }
+      }
+    }
+  }
+
+  if (missedTasks.length > 0) {
+    await prisma.task.createMany({ data: missedTasks });
+    return await updatePlayerXp(player.id, player.xp - xpDeduction);
+  }
+
+  return player;
+}
+
 // GET /api/daily — today's progress with XP summary
 dailyRouter.get('/', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const player = await getOrCreatePlayer();
+    let player = await getOrCreatePlayer();
+
+    // Penalise any past days where required tasks weren't completed
+    player = await applyMissedPenalties(player);
 
     // Record today's level for stats computation
     const today = getTodayDate();
