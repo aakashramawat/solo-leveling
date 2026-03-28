@@ -8,6 +8,5 @@
       "@solo-leveling/shared": ["../shared/src"]
     }
   },
-  "include": ["src"],
-  "references": [{ "path": "../shared" }]
+  "include": ["src"]
 }
