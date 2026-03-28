@@ -6,7 +6,7 @@ interface PageHeaderProps {
 
 export default function PageHeader({ title, subtitle, children }: PageHeaderProps) {
   return (
-    <div className="flex items-end justify-between mb-8">
+    <div className="flex flex-wrap items-end justify-between gap-2 mb-8">
       <div>
         <h2 className="text-2xl font-display font-bold tracking-wide text-gray-100">
           {title}

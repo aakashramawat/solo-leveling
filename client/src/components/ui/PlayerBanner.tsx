@@ -68,7 +68,7 @@ export default function PlayerBanner({ name, rank, title, xp, xpToEnter, xpToPas
         <span
           className="font-display font-black leading-none"
           style={{
-            fontSize: '4rem',
+            fontSize: 'clamp(2rem, 8vw, 4rem)',
             color: RANK_COLORS[rank],
             textShadow: `0 0 20px ${RANK_COLORS[rank]}, 0 0 40px ${RANK_COLORS[rank]}80, 0 2px 4px rgba(0,0,0,0.8)`,
             filter: 'drop-shadow(0 0 8px currentColor)',

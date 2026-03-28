@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import { getLevelInfo, getLevelForXp, getDailyRequirements } from '@solo-leveling/shared';
 import type { PlayerStats } from '@solo-leveling/shared';
 import { prisma } from '../index.js';
@@ -13,7 +13,7 @@ function getTodayDate(): string {
 function daysBetween(start: Date, end: Date): number {
   const s = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   const e = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-  return Math.floor((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1; // inclusive
+  return Math.floor((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 }
 
 function dateToString(d: Date): string {
@@ -21,14 +21,11 @@ function dateToString(d: Date): string {
 }
 
 async function computeStats(playerId: string, playerCreatedAt: Date, currentLevel: number): Promise<PlayerStats> {
-  // Get all day logs
   let dayLogs = await prisma.dayLog.findMany({
     where: { playerId },
     orderBy: { date: 'asc' },
   });
 
-  // Backfill missing days: for any day from createdAt to today without a DayLog,
-  // create one using current level as approximation
   const today = new Date();
   const totalDays = daysBetween(playerCreatedAt, today);
   const existingDates = new Set(dayLogs.map((d) => d.date));
@@ -51,13 +48,11 @@ async function computeStats(playerId: string, playerCreatedAt: Date, currentLeve
     });
   }
 
-  // Sum up available tasks per category across all days
   let availableGrowth = 0;
   let availableHobby = 0;
   let availableSelfCare = 0;
 
   for (const log of dayLogs) {
-    // Only count days up to today
     if (log.date > getTodayDate()) continue;
     const req = getDailyRequirements(log.level);
     availableGrowth += req.growth;
@@ -67,7 +62,6 @@ async function computeStats(playerId: string, playerCreatedAt: Date, currentLeve
 
   const availableTotal = availableGrowth + availableHobby + availableSelfCare;
 
-  // Count completed tasks per category
   const completedTasks = await prisma.task.groupBy({
     by: ['category'],
     where: { playerId, status: 'completed' },
@@ -91,70 +85,76 @@ async function computeStats(playerId: string, playerCreatedAt: Date, currentLeve
 }
 
 // Get or create the single player
-playerRouter.get('/', async (_req, res) => {
-  let player = await prisma.player.findFirst();
+playerRouter.get('/', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    let player = await prisma.player.findFirst();
 
-  if (!player) {
-    const info = getLevelInfo(1);
-    player = await prisma.player.create({
+    if (!player) {
+      const info = getLevelInfo(1);
+      player = await prisma.player.create({
+        data: { title: info.title },
+      });
+    }
+
+    const info = getLevelInfo(player.level);
+    const stats = await computeStats(player.id, player.createdAt, player.level);
+
+    res.json({
+      success: true,
       data: {
+        id: player.id,
+        name: player.name,
+        level: player.level,
+        rank: info.rank,
         title: info.title,
+        xp: player.xp,
+        xpToEnter: info.xpToEnter,
+        xpToPass: info.xpToPass,
+        skipPasses: player.skipPasses,
+        stats,
+        createdAt: player.createdAt.toISOString(),
+        updatedAt: player.updatedAt.toISOString(),
       },
     });
+  } catch (err) {
+    next(err);
   }
-
-  const info = getLevelInfo(player.level);
-  const stats = await computeStats(player.id, player.createdAt, player.level);
-
-  res.json({
-    success: true,
-    data: {
-      id: player.id,
-      name: player.name,
-      level: player.level,
-      rank: info.rank,
-      title: info.title,
-      xp: player.xp,
-      xpToEnter: info.xpToEnter,
-      xpToPass: info.xpToPass,
-      skipPasses: player.skipPasses,
-      stats,
-      createdAt: player.createdAt.toISOString(),
-      updatedAt: player.updatedAt.toISOString(),
-    },
-  });
 });
 
 // Update player
-playerRouter.put('/', async (req, res) => {
-  const player = await prisma.player.findFirst();
-  if (!player) {
-    res.status(404).json({ success: false, error: 'Player not found' });
-    return;
+playerRouter.put('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const player = await prisma.player.findFirst();
+    if (!player) {
+      res.status(404).json({ success: false, error: 'Player not found' });
+      return;
+    }
+
+    const updated = await prisma.player.update({
+      where: { id: player.id },
+      data: req.body,
+    });
+
+    const info = getLevelInfo(updated.level);
+    const stats = await computeStats(updated.id, updated.createdAt, updated.level);
+
+    res.json({
+      success: true,
+      data: {
+        id: updated.id,
+        name: updated.name,
+        level: updated.level,
+        rank: info.rank,
+        title: info.title,
+        xp: updated.xp,
+        xpToEnter: info.xpToEnter,
+        xpToPass: info.xpToPass,
+        stats,
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    next(err);
   }
-
-  const updated = await prisma.player.update({
-    where: { id: player.id },
-    data: req.body,
-  });
-
-  const info = getLevelInfo(updated.level);
-  const stats = await computeStats(updated.id, updated.createdAt, updated.level);
-
-  res.json({
-    success: true,
-    data: {
-      id: updated.id,
-      name: updated.name,
-      level: updated.level,
-      rank: info.rank,
-      title: info.title,
-      xp: updated.xp,
-      xpToEnter: info.xpToEnter,
-      xpToPass: info.xpToPass,
-      stats,
-      createdAt: updated.createdAt.toISOString(),
-      updatedAt: updated.updatedAt.toISOString(),
-    },
-  });
 });
